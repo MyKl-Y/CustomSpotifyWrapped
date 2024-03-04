@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:tools="http://schemas.android.com/tools"
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <data>  </data>
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <Button
+            android:id="@+id/signOut_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="155dp"
+            android:layout_marginTop="100dp"
+            android:layout_marginEnd="151dp"
+            android:text="Sign Out"
+            app:layout_constraintBottom_toTopOf="@+id/updateEmail_button"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <Button
+            android:id="@+id/updatePassword_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="115dp"
+            android:layout_marginEnd="115dp"
+            android:text="Update Password"
+            app:layout_constraintBottom_toTopOf="@+id/verifyEmail_button"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/updateEmail_button" />
+
+        <Button
+            android:id="@+id/updateEmail_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="133dp"
+            android:layout_marginEnd="133dp"
+            android:text="Update Email"
+            app:layout_constraintBottom_toTopOf="@+id/updatePassword_button"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/signOut_button" />
+
+        <Button
+            android:id="@+id/deleteAccount_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="121dp"
+            android:layout_marginEnd="122dp"
+            android:layout_marginBottom="100dp"
+            android:text="Delete Account"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/resetPassword_button" />
+
+        <Button
+            android:id="@+id/verifyEmail_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="136dp"
+            android:layout_marginEnd="137dp"
+            android:text="Verify Email"
+            app:layout_constraintBottom_toTopOf="@+id/resetPassword_button"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/updatePassword_button" />
+
+        <Button
+            android:id="@+id/resetPassword_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="121dp"
+            android:layout_marginEnd="121dp"
+            android:text="Reset Password"
+            app:layout_constraintBottom_toTopOf="@+id/deleteAccount_button"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/verifyEmail_button" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</layout>

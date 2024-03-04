@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    app:startDestination="@+id/EmailPasswordFragment"
+    android:id="@+id/nav_graph">
+
+    <fragment
+        android:id="@+id/EmailPasswordFragment"
+        android:name="com.example.spotifywrapped.EmailPasswordFragment"
+        android:label="Login"
+        tools:layout="@layout/fragment_emailpassword">
+        <action
+            android:id="@+id/action_EmailPasswordFragment_to_AccountFragment"
+            app:destination="@+id/navigation_account"/>
+    </fragment>
+
+    <fragment
+        android:id="@+id/navigation_discover"
+        android:name="com.example.spotifywrapped.DiscoverFragment"
+        android:label="Discover"
+        tools:layout="@layout/fragment_discover">
+        <argument
+            android:name="user"
+            android:defaultValue="null" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/navigation_create"
+        android:name="com.example.spotifywrapped.CreateFragment"
+        android:label="Create"
+        tools:layout="@layout/fragment_create">
+        <argument
+            android:name="user"
+            android:defaultValue="null" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/navigation_account"
+        android:name="com.example.spotifywrapped.AccountFragment"
+        android:label="Account"
+        tools:layout="@layout/fragment_account">
+        <argument
+            android:name="user"
+            android:defaultValue="null" />
+        <action
+            android:id="@+id/action_AccountNavigation_to_EmailPasswordFragment"
+            app:destination="@id/EmailPasswordFragment" />
+    </fragment>
+
+</navigation>
