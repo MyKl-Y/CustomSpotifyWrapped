@@ -24,6 +24,7 @@ import com.google.firebase.auth.AuthCredential;
 import com.google.firebase.auth.EmailAuthProvider;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.auth.UserProfileChangeRequest;
 
 public class AccountFragment extends Fragment {
 
@@ -164,6 +165,7 @@ public class AccountFragment extends Fragment {
                                     Toast.makeText(getContext(),
                                             "Verification email sent to " + user.getEmail(),
                                             Toast.LENGTH_SHORT).show();
+                                    reload();
                                 } else {
                                     Log.e("UpdateAccount", "sendEmailVerification", task.getException());
                                     Toast.makeText(getContext(),
@@ -190,6 +192,7 @@ public class AccountFragment extends Fragment {
                                     Toast.makeText(getContext(),
                                             "Password reset email sent to " + user.getEmail(),
                                             Toast.LENGTH_SHORT).show();
+                                    reload();
                                 } else {
                                     Log.e("UpdateAccount", "sendPasswordResetEmailVerification", task.getException());
                                     Toast.makeText(getContext(),
@@ -236,6 +239,45 @@ public class AccountFragment extends Fragment {
                 builder.show();
             }
         });
+
+        mBinding.displayNameButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
+                builder.setTitle("Enter New Display Name");
+
+                final EditText displayNameInput = new EditText(requireContext());
+                displayNameInput.setInputType(InputType.TYPE_CLASS_TEXT);
+                builder.setView(displayNameInput);
+
+                builder.setPositiveButton("Done", (dialog, which) -> {
+                    UserProfileChangeRequest profileUpdates = new UserProfileChangeRequest.Builder()
+                            .setDisplayName(displayNameInput.getText().toString())
+                            .build();
+
+                    user.updateProfile(profileUpdates)
+                            .addOnCompleteListener(new OnCompleteListener<Void>() {
+                                @Override
+                                public void onComplete(@NonNull Task<Void> task) {
+                                    if (task.isSuccessful()) {
+                                        reload();
+                                    }
+                                }
+                            });
+                });
+                builder.setNegativeButton("Cancel", (dialog, which) -> dialog.cancel());
+
+                builder.show();
+            }
+        });
+    }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+        if (user != null) {
+            reload();
+        }
     }
 
     private void updateAccount(String type, String email, String oldPass, String newVal) {
@@ -275,5 +317,50 @@ public class AccountFragment extends Fragment {
                         }
                     }
                 });
+        reload();
+    }
+
+    private void reload() {
+        auth.getCurrentUser().reload().addOnCompleteListener(new OnCompleteListener<Void>() {
+            @Override
+            public void onComplete(@NonNull Task<Void> task) {
+                if (task.isSuccessful()) {
+                    updateUI(auth.getCurrentUser());
+                    /*Toast.makeText(getContext(),
+                            "Reload successful!",
+                            Toast.LENGTH_SHORT).show();*/
+                } else {
+                    Log.e("AccountReload", "reload", task.getException());
+                    /*Toast.makeText(getContext(),
+                            "Failed to reload user.",
+                            Toast.LENGTH_SHORT).show();*/
+                }
+            }
+        });
+    }
+
+    private void updateUI(FirebaseUser user) {
+        if (user != null) {
+            if (user.getDisplayName() != null) {
+                mBinding.accountWelcomeHeader.setText("Welcome " + user.getDisplayName() + "!");
+                mBinding.userName.setText(user.getDisplayName());
+            } else {
+                mBinding.accountWelcomeHeader.setText("Welcome User " + user.getUid());
+                mBinding.userName.setText("Enter a Display Name!");
+            }
+            mBinding.userEmailTextView.setText(user.getEmail());
+
+            if (user.isEmailVerified()) {
+                mBinding.verifyEmailButton.setVisibility(View.GONE);
+            } else {
+                mBinding.verifyEmailButton.setVisibility(View.VISIBLE);
+            }
+        }
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        mBinding = null;
     }
 }
