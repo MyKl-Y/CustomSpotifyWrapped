@@ -16,6 +16,7 @@ import com.google.android.material.bottomnavigation.BottomNavigationView;
 public class MainActivity extends AppCompatActivity {
 
     private ActivityMainBinding mBinding;
+    protected static APITokens tokens = new APITokens();
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {

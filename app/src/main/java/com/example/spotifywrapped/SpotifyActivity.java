@@ -26,8 +26,8 @@ import okhttp3.Response;
 
 public class SpotifyActivity extends AppCompatActivity {
 
-    public static final String CLIENT_ID = "";
-    public static final String REDIRECT_URI = "";
+    public static final String CLIENT_ID = MainActivity.tokens.getValue("Spotify Client ID");
+    public static final String REDIRECT_URI = MainActivity.tokens.getValue("Spotify Redirect URI");
 
     public static final int AUTH_TOKEN_REQUEST_CODE = 0;
     public static final int AUTH_CODE_REQUEST_CODE = 1;
