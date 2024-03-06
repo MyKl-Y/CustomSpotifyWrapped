@@ -1,9 +1,13 @@
 package com.example.spotifywrapped;
 
+import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.text.InputType;
+import android.util.Base64;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -12,6 +16,8 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
@@ -19,12 +25,44 @@ import androidx.navigation.fragment.NavHostFragment;
 
 import com.example.spotifywrapped.databinding.FragmentAccountBinding;
 import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.AuthCredential;
 import com.google.firebase.auth.EmailAuthProvider;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.UserProfileChangeRequest;
+import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
+import com.google.firebase.firestore.QuerySnapshot;
+import com.spotify.sdk.android.auth.AuthorizationClient;
+import com.spotify.sdk.android.auth.AuthorizationRequest;
+import com.spotify.sdk.android.auth.AuthorizationResponse;
+
+import org.jetbrains.annotations.NotNull;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.FormBody;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
 
 public class AccountFragment extends Fragment {
 
@@ -35,6 +73,23 @@ public class AccountFragment extends Fragment {
 
     private String oldEmail, oldPass;
 
+    public static final String CLIENT_ID = MainActivity.tokens.getValue("Spotify Client ID");
+
+    public static final String CLIENT_SECRET = MainActivity.tokens.getValue("Spotify Client Secret");
+
+    public static final String REDIRECT_URI = MainActivity.tokens.getValue("Spotify Redirect URI");
+
+    public static final int AUTH_TOKEN_REQUEST_CODE = 0;
+    public static final int AUTH_CODE_REQUEST_CODE = 1;
+
+    private final OkHttpClient mOkHttpClient = new OkHttpClient();
+    private String mAccessToken, mAccessCode, mRefreshToken;
+    private Call mCall;
+
+    private FirebaseFirestore db = FirebaseFirestore.getInstance();
+
+    private ScheduledExecutorService scheduler;
+
     @Nullable
     @Override
     public View onCreateView(
@@ -42,12 +97,159 @@ public class AccountFragment extends Fragment {
             @Nullable ViewGroup container,
             @Nullable Bundle savedInstanceState) {
         mBinding = FragmentAccountBinding.inflate(inflater, container, false);
+        getUserProfile();
         return mBinding.getRoot();
     }
 
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
+
+        getUserProfile();
+
+        String userId = user.getUid(); // Get the current user's UID
+
+        db.collection("users")
+                .document(userId) // Use the UID to directly reference the document
+                .get()
+                .addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
+                    @Override
+                    public void onComplete(@NonNull Task<DocumentSnapshot> task) {
+                        if (task.isSuccessful()) {
+                            DocumentSnapshot document = task.getResult();
+                            if (document != null && document.exists()) {
+                                Boolean isLinked = document.getBoolean("isLinked"); // Assuming "isLinked" is your field
+                                if (Boolean.TRUE.equals(isLinked)) {
+                                    // The account is linked
+                                    // Update your UI or logic accordingly
+                                    mBinding.linkSpotify.setVisibility(View.GONE);
+                                    mBinding.unlinkSpotify.setVisibility(View.VISIBLE);
+                                    getUserProfile();
+                                } else {
+                                    // The account is not linked or the field is missing/false
+                                    // Update your UI or logic accordingly
+                                    mBinding.linkSpotify.setVisibility(View.VISIBLE);
+                                    mBinding.unlinkSpotify.setVisibility(View.GONE);
+                                    getUserProfile();
+                                }
+                            } else {
+                                Log.d("Firestore", "No such document");
+                                // Handle the case where the document does not exist
+                                // Update your UI or logic accordingly
+                                mBinding.linkSpotify.setVisibility(View.VISIBLE);
+                                mBinding.unlinkSpotify.setVisibility(View.GONE);
+                                getUserProfile();
+                            }
+                        } else {
+                            Log.d("Firestore", "get failed with ", task.getException());
+                            // Handle the failure
+                        }
+                    }
+                });
+
+        ActivityResultLauncher<Intent> authActivityResultLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                result -> {
+                    if (result.getResultCode() == Activity.RESULT_OK) {
+                        // Handle the response
+                        final AuthorizationResponse response = AuthorizationClient.getResponse(result.getResultCode(), result.getData());
+                        mAccessToken = response.getAccessToken();
+                        // Update UI or perform further actions with the token
+
+                        Map<String, Object> userObj = new HashMap<>();
+                        userObj.put("isLinked", Boolean.TRUE);
+                        userObj.put("token", mAccessToken);
+                        db.collection("users").document(user.getUid())
+                                .set(userObj)
+                                .addOnSuccessListener(new OnSuccessListener<Void>() {
+                                    @Override
+                                    public void onSuccess(Void avoid) {
+                                        Log.d("Firestore", "Account linked successfully.");
+                                        mBinding.linkSpotify.setVisibility(View.GONE);
+                                        mBinding.unlinkSpotify.setVisibility(View.VISIBLE);
+
+                                        // Check if the scheduler is null or has been shut down, and then start it
+                                        if (scheduler == null || scheduler.isShutdown()) {
+                                            scheduler = Executors.newSingleThreadScheduledExecutor();
+                                            scheduler.scheduleAtFixedRate(() -> refreshSpotifyToken(), 3500, 3500, TimeUnit.SECONDS);
+                                        }
+                                    }
+                                })
+                                .addOnFailureListener(new OnFailureListener() {
+                                    @Override
+                                    public void onFailure(@NonNull Exception e) {
+                                        Log.w("Firestore", "Error adding document", e);
+
+                                    }
+                                });
+                    }
+                    getUserProfile();
+                });
+
+        /*
+        mBinding.linkSpotify.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                db.collection("users")
+                        .get()
+                        .addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
+                            @Override
+                            public void onComplete(@NonNull Task<QuerySnapshot> task) {
+                                if (task.isSuccessful()) {
+                                    for (QueryDocumentSnapshot document : task.getResult()) {
+                                        if (document.getData().get(user.getUid()).equals(Boolean.TRUE)) {
+                                            Map<String, Boolean> userObj = new HashMap<>();
+                                            userObj.put(user.getUid(), Boolean.FALSE);
+                                            db.collection("users")
+                                                    .add(userObj)
+                                                    .addOnSuccessListener(new OnSuccessListener<DocumentReference>() {
+                                                        @Override
+                                                        public void onSuccess(DocumentReference documentReference) {
+                                                            Log.d("Firestore", "DocumentSnapshot added with ID: " + documentReference.getId());
+                                                        }
+                                                    })
+                                                    .addOnFailureListener(new OnFailureListener() {
+                                                        @Override
+                                                        public void onFailure(@NonNull Exception e) {
+                                                            Log.w("Firestore", "Error adding document", e);
+
+                                                        }
+                                                    });
+                                        } else {
+                                            getToken(authActivityResultLauncher);
+                                        }
+                                    }
+                                } else {
+                                    Map<String, Boolean> userObj = new HashMap<>();
+                                    userObj.put(user.getUid(), Boolean.FALSE);
+                                    db.collection("users")
+                                            .add(userObj)
+                                            .addOnSuccessListener(new OnSuccessListener<DocumentReference>() {
+                                                @Override
+                                                public void onSuccess(DocumentReference documentReference) {
+                                                    Log.d("Firestore", "DocumentSnapshot added with ID: " + documentReference.getId());
+                                                }
+                                            })
+                                            .addOnFailureListener(new OnFailureListener() {
+                                                @Override
+                                                public void onFailure(@NonNull Exception e) {
+                                                    Log.w("Firestore", "Error adding document", e);
+
+                                                }
+                                            });
+                                }
+                            }
+                        });
+            }
+        });
+         */
+        mBinding.linkSpotify.setOnClickListener(v -> getToken(authActivityResultLauncher));
+        mBinding.unlinkSpotify.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                unlinkAccount();
+            }
+        });
 
         mBinding.signOutButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -320,6 +522,166 @@ public class AccountFragment extends Fragment {
         reload();
     }
 
+    private void getToken(ActivityResultLauncher<Intent> authActivityResultLauncher) {
+        AuthorizationRequest request = getAuthenticationRequest(AuthorizationResponse.Type.TOKEN);
+        Intent intent = AuthorizationClient.createLoginActivityIntent(getActivity(), request);
+        authActivityResultLauncher.launch(intent);
+    }
+
+    private AuthorizationRequest getAuthenticationRequest(AuthorizationResponse.Type type) {
+        return new AuthorizationRequest.Builder(CLIENT_ID, type, getRedirectUri().toString())
+                .setShowDialog(false)
+                .setScopes(new String[] { "user-read-email", "user-read-private" }) // <--- Change the scope of your requested token here
+                .setCampaign("your-campaign-token")
+                .build();
+    }
+
+    private Uri getRedirectUri() {
+        return Uri.parse(REDIRECT_URI);
+    }
+
+    private void refreshSpotifyToken() {
+        OkHttpClient client = new OkHttpClient();
+
+        // Spotify's token endpoint
+        String tokenEndpoint = "https://accounts.spotify.com/api/token";
+
+        // Prepare the request body with the refresh token and grant type
+        RequestBody requestBody = new FormBody.Builder()
+                .add("grant_type", "refresh_token")
+                .add("refresh_token", mRefreshToken)
+                .build();
+
+        // Encode CLIENT_ID and CLIENT_SECRET
+        String authValue = CLIENT_ID + ":" + CLIENT_SECRET;
+        String base64AuthValue = Base64.encodeToString(authValue.getBytes(), Base64.NO_WRAP);
+
+        // Prepare the request
+        Request request = new Request.Builder()
+                .url(tokenEndpoint)
+                .post(requestBody)
+                .addHeader("Authorization", "Basic " + base64AuthValue)
+                .build();
+
+        // Execute the request
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NotNull Call call, @NotNull IOException e) {
+                // Log failure
+                Log.e("SpotifyRefreshToken", "Failed to refresh token", e);
+            }
+
+            @Override
+            public void onResponse(@NotNull Call call, @NotNull Response response) throws IOException {
+                if (response.isSuccessful()) {
+                    String responseBody = Objects.requireNonNull(response.body()).string();
+                    try {
+                        JSONObject jsonObject = new JSONObject(responseBody);
+                        mAccessToken = jsonObject.getString("access_token");
+                        Map<String, Object> userObj = new HashMap<>();
+                        userObj.put("token", mAccessToken);
+                        db.collection("users").document(user.getUid())
+                                .set(userObj)
+                                .addOnSuccessListener(new OnSuccessListener<Void>() {
+                                    @Override
+                                    public void onSuccess(Void avoid) {
+                                        Log.d("Firestore", "Access Token Updated.");
+                                    }
+                                })
+                                .addOnFailureListener(new OnFailureListener() {
+                                    @Override
+                                    public void onFailure(@NonNull Exception e) {
+                                        Log.w("Firestore", "Error adding document", e);
+
+                                    }
+                                });
+                        // Optionally, update the refresh token if provided
+                        if (jsonObject.has("refresh_token")) {
+                            mRefreshToken = jsonObject.getString("refresh_token");
+                        }
+                        // You might want to update the UI or retry the failed Spotify API call here
+                    } catch (JSONException e) {
+                        Log.e("SpotifyRefreshToken", "Failed to parse token refresh response", e);
+                    }
+                } else {
+                    Log.e("SpotifyRefreshToken", "Token refresh was not successful. Response code: " + response.code());
+                }
+            }
+        });
+    }
+
+    public void getUserProfile() {
+        if (mAccessToken == null) {
+            mBinding.spotifyAccountTextView.setText("Show linked Spotify Account!");
+            return;
+        }
+
+        final Request request = new Request.Builder()
+                .url("https://api.spotify.com/v1/me")
+                .addHeader("Authorization", "Bearer " + mAccessToken)
+                .build();
+
+        cancelCall();
+        mCall = mOkHttpClient.newCall(request);
+
+        mCall.enqueue(new Callback() {
+            @Override
+            public void onFailure(@NotNull Call call, @NotNull IOException e) {
+                getActivity().runOnUiThread(() -> Toast.makeText(getContext(), "Failed to fetch data: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+            }
+
+            @Override
+            public void onResponse(@NotNull Call call, @NotNull Response response) throws IOException {
+                String responseData = response.body().string(); // Ensures only one call to .string()
+                getActivity().runOnUiThread(() -> {
+                    try {
+                        JSONObject jsonObject = new JSONObject(responseData);
+                        String displayName = jsonObject.optString("display_name", "N/A");
+                        String email = jsonObject.optString("email", "N/A");
+                        // Update UI to display username and email in a formatted way
+                        String accountDetails = "Username: " + displayName + "\nEmail: " + email;
+                        mBinding.spotifyAccountTextView.setText(accountDetails); // Make sure you have a TextView with this ID in your layout
+                    } catch (JSONException e) {
+                        Toast.makeText(getContext(), "Failed to parse data: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    }
+                });
+            }
+        });
+    }
+
+    public void unlinkAccount() {
+        Map<String, Object> userObj = new HashMap<>();
+        userObj.put("isLinked", Boolean.FALSE);
+        db.collection("users").document(user.getUid())
+                .set(userObj)
+                .addOnSuccessListener(new OnSuccessListener<Void>() {
+                    @Override
+                    public void onSuccess(Void aVoid) {
+                        Log.d("Firestore", "Account unlinked successfully.");
+                        mBinding.linkSpotify.setVisibility(View.VISIBLE);
+                        mBinding.unlinkSpotify.setVisibility(View.GONE);
+
+                        // Optionally stop and shutdown the scheduler here if it's no longer needed
+                        if (scheduler != null && !scheduler.isShutdown()) {
+                            scheduler.shutdownNow();
+                        }                            }
+                })
+                .addOnFailureListener(new OnFailureListener() {
+                    @Override
+                    public void onFailure(@NonNull Exception e) {
+                        Log.w("Firestore", "Error adding document", e);
+
+                    }
+                });
+        getUserProfile();
+    }
+
+    private void cancelCall() {
+        if (mCall != null) {
+            mCall.cancel();
+        }
+    }
+
     private void reload() {
         auth.getCurrentUser().reload().addOnCompleteListener(new OnCompleteListener<Void>() {
             @Override
@@ -337,6 +699,7 @@ public class AccountFragment extends Fragment {
                 }
             }
         });
+        getUserProfile();
     }
 
     private void updateUI(FirebaseUser user) {
@@ -356,10 +719,31 @@ public class AccountFragment extends Fragment {
                 mBinding.verifyEmailButton.setVisibility(View.VISIBLE);
             }
         }
+        getUserProfile();
     }
 
     @Override
     public void onDestroyView() {
+        Map<String, Object> userObj = new HashMap<>();
+        userObj.put("isLinked", Boolean.FALSE);
+        db.collection("users").document(user.getUid())
+                .set(userObj)
+                .addOnSuccessListener(new OnSuccessListener<Void>() {
+                    @Override
+                    public void onSuccess(Void aVoid) {
+                        Log.d("Firestore", "Account unlinked successfully.");
+                        // Optionally stop and shutdown the scheduler here if it's no longer needed
+                        if (scheduler != null && !scheduler.isShutdown()) {
+                            scheduler.shutdownNow();
+                        }                            }
+                })
+                .addOnFailureListener(new OnFailureListener() {
+                    @Override
+                    public void onFailure(@NonNull Exception e) {
+                        Log.w("Firestore", "Error adding document", e);
+
+                    }
+                });
         super.onDestroyView();
         mBinding = null;
     }

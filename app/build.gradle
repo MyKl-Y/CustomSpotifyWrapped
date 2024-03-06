@@ -43,6 +43,7 @@ dependencies {
     // 2 Added for Spotify API and simplifying requests
     implementation 'com.spotify.android:auth:2.1.1'
     implementation 'com.squareup.okhttp3:okhttp:4.9.3'
+    implementation "com.google.code.gson:gson"
     // Firebase BoM
     implementation(platform("com.google.firebase:firebase-bom:32.7.3"))
     // TODO: Add the dependencies for Firebase products you want to use

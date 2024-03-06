@@ -27,13 +27,16 @@ import okhttp3.Response;
 public class SpotifyActivity extends AppCompatActivity {
 
     public static final String CLIENT_ID = MainActivity.tokens.getValue("Spotify Client ID");
+
+    public static final String CLIENT_SECRET = MainActivity.tokens.getValue("Spotify Client Secret");
+
     public static final String REDIRECT_URI = MainActivity.tokens.getValue("Spotify Redirect URI");
 
     public static final int AUTH_TOKEN_REQUEST_CODE = 0;
     public static final int AUTH_CODE_REQUEST_CODE = 1;
 
     private final OkHttpClient mOkHttpClient = new OkHttpClient();
-    private String mAccessToken, mAccessCode;
+    private String mAccessToken, mAccessCode, mRefreshToken;
     private Call mCall;
 
     private TextView tokenTextView, codeTextView, profileTextView;
@@ -104,11 +107,10 @@ public class SpotifyActivity extends AppCompatActivity {
         // Check which request code is present (if any)
         if (AUTH_TOKEN_REQUEST_CODE == requestCode) {
             mAccessToken = response.getAccessToken();
-            setTextAsync(mAccessToken, tokenTextView);
-
+            //setTextAsync(mAccessToken, tokenTextView);
         } else if (AUTH_CODE_REQUEST_CODE == requestCode) {
             mAccessCode = response.getCode();
-            setTextAsync(mAccessCode, codeTextView);
+            //setTextAsync(mAccessCode, codeTextView);
         }
     }
 
