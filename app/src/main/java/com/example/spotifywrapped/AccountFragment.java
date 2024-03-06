@@ -124,12 +124,14 @@ public class AccountFragment extends Fragment {
                                     // Update your UI or logic accordingly
                                     mBinding.linkSpotify.setVisibility(View.GONE);
                                     mBinding.unlinkSpotify.setVisibility(View.VISIBLE);
+                                    mAccessToken = document.getString("token");
                                     getUserProfile();
                                 } else {
                                     // The account is not linked or the field is missing/false
                                     // Update your UI or logic accordingly
                                     mBinding.linkSpotify.setVisibility(View.VISIBLE);
                                     mBinding.unlinkSpotify.setVisibility(View.GONE);
+                                    mAccessToken = document.getString("token");
                                     getUserProfile();
                                 }
                             } else {
@@ -138,6 +140,7 @@ public class AccountFragment extends Fragment {
                                 // Update your UI or logic accordingly
                                 mBinding.linkSpotify.setVisibility(View.VISIBLE);
                                 mBinding.unlinkSpotify.setVisibility(View.GONE);
+                                mAccessToken = document.getString("token");
                                 getUserProfile();
                             }
                         } else {
@@ -531,7 +534,7 @@ public class AccountFragment extends Fragment {
     private AuthorizationRequest getAuthenticationRequest(AuthorizationResponse.Type type) {
         return new AuthorizationRequest.Builder(CLIENT_ID, type, getRedirectUri().toString())
                 .setShowDialog(false)
-                .setScopes(new String[] { "user-read-email", "user-read-private" }) // <--- Change the scope of your requested token here
+                .setScopes(new String[] { "user-read-email", "user-read-private", "user-top-read" }) // <--- Change the scope of your requested token here
                 .setCampaign("your-campaign-token")
                 .build();
     }
