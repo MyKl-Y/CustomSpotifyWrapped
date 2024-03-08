@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android">
+    <data>  </data>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <Button
+            android:id="@+id/createWrapped_button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Create New Summary" />
+
+        <TextView
+            android:id="@+id/pastWrapped_textView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Spotify Wrapped Summaries"
+            android:textAppearance="@style/TextAppearance.AppCompat.Large"
+            android:textStyle="bold" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/pastWrapped_recyclerView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+    </LinearLayout>
+</layout>
