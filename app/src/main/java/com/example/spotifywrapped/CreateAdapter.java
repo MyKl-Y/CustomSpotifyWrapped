@@ -1,5 +1,6 @@
 package com.example.spotifywrapped;
 
+import android.content.Intent;
 import android.graphics.Color;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -53,6 +54,14 @@ public class CreateAdapter extends RecyclerView.Adapter<CreateAdapter.ViewHolder
         holder.type_textView.setText(dataModel.type);
         Random rnd = new Random();
         holder.card.setCardBackgroundColor(Color.argb(255, rnd.nextInt(256), rnd.nextInt(256), rnd.nextInt(256)));
+        holder.card.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v){
+                Intent intent = new Intent(v.getContext(), SummaryPlayerActivity.class);
+                intent.putExtra("documentId", dataModel.documentId);
+                v.getContext().startActivity(intent);
+            }
+        });
     }
 
     @Override

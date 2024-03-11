@@ -23,6 +23,7 @@
             </intent-filter>
         </activity>
         <activity android:name=".SpotifyActivity">  </activity>
+        <activity android:name=".SummaryPlayerActivity">    </activity>
     </application>
 
 </manifest>

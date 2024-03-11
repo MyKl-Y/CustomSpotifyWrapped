@@ -55,6 +55,8 @@ dependencies {
     implementation 'androidx.navigation:navigation-ui:2.7.7'
     implementation 'com.google.firebase:firebase-firestore'
     implementation 'androidx.preference:preference:1.2.0'
+    // Added for instagram/snapchat like view features
+    //implementation 'com.github.shts:StoriesProgressView:3.0.0'
 
     // Add the dependencies for any other desired Firebase products
     // https://firebase.google.com/docs/android/setup#available-libraries
