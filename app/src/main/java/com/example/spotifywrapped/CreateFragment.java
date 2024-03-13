@@ -35,6 +35,8 @@ import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -168,10 +170,9 @@ public class CreateFragment extends Fragment {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         int selectedPosition = ((AlertDialog)dialog).getListView().getCheckedItemPosition();
-                        String selectedTimeRange = "short_term"; // Default value
+                        String selectedTimeRange = null; // Default value
                         switch (selectedPosition) {
                             case 0:
-                                selectedTimeRange = null;
                                 break;
                             case 1:
                                 selectedTimeRange = "short_term";
@@ -208,73 +209,289 @@ public class CreateFragment extends Fragment {
         HashMap<String, Object> parent = new HashMap<>();
         HashMap<String, Object> updates = new HashMap<>();
         HashSet<String> genres = new HashSet<>();
+        HashMap<String, Integer> genreOccurrences = new HashMap<>();
+        HashSet<String> trackGenres = new HashSet<>();
+        ArrayList<String> finalGenres = new ArrayList<>();
 //        updates.put("date", new Date());
         ArrayList<String> artistNames = new ArrayList<>();
         ArrayList<String> songs = new ArrayList<>();
+        ArrayList<String> artistImages = new ArrayList<>();
+        ArrayList<String> songImages = new ArrayList<>();
+        ArrayList<String> artistIds = new ArrayList<>();
+        ArrayList<String> songIds = new ArrayList<>();
+        HashSet<String> songIdsHashSet = new HashSet<>();
+        HashSet<String> artistIdsHashSet = new HashSet<>();
+        HashSet<String> songsHashSet = new HashSet<>();
+        HashSet<String> artistsHashSet = new HashSet<>();
+        HashSet<String> artistImagesHashSet = new HashSet<>();
+        HashSet<String> songImagesHashSet = new HashSet<>();
+        Map<String, TrackDetails> trackDetailsMap = new HashMap<>();
 
-        // Define the callback as a local variable for reuse
-        Callback callback = new Callback() {
-            @Override
-            public void onFailure(@NotNull Call call, @NotNull IOException e) {
-                getActivity().runOnUiThread(() -> Toast.makeText(getContext(), "Failed to fetch data: " + e.getMessage(), Toast.LENGTH_SHORT).show());
-                // Consider also incrementing completedCalls here or setting a flag to avoid hanging if one call fails
-            }
+        if (timeRange == null) {
+            // 1 week, get based on recently played
+            // Define the callback as a local variable for reuse
+            Callback callback = new Callback() {
+                @Override
+                public void onFailure(@NotNull Call call, @NotNull IOException e) {
+                    getActivity().runOnUiThread(() -> Toast.makeText(getContext(), "Failed to fetch data: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+                    // Consider also incrementing completedCalls here or setting a flag to avoid hanging if one call fails
+                }
 
-            @Override
-            public void onResponse(@NotNull Call call, @NotNull Response response) throws IOException {
-                String responseData = response.body().string();
-                getActivity().runOnUiThread(() -> {
-                    try {
-                        JSONObject jsonObject = new JSONObject(responseData);
-                        JSONArray items = jsonObject.getJSONArray("items");
+                @Override
+                public void onResponse(@NotNull Call call, @NotNull Response response) throws IOException {
+                    String responseData = response.body().string();
+                    getActivity().runOnUiThread(() -> {
+                        try {
+                            JSONObject jsonObject = new JSONObject(responseData);
+                            JSONArray items = jsonObject.getJSONArray("items");
 
-                        for (int i = 0; i < items.length(); i++) {
-                            JSONObject itemObject = items.getJSONObject(i);
-                            String name = itemObject.getString("name");
+                            for (int i = 0; i < items.length(); i++) {
+                                JSONObject itemObject = items.getJSONObject(i);
 
-                            // Check if this was a call for artists or tracks
-                            if (call.request().url().toString().contains("/top/artists")) {
-                                artistNames.add(name);
-                                JSONArray genresArray = itemObject.getJSONArray("genres");
-                                for (int j = 0; j < genresArray.length(); j++) {
-                                    genres.add(genresArray.getString(j));
+                                // Check if this was a call for artists or tracks
+                                if (call.request().url().toString().contains("/top/artists")) {
+                                    JSONArray genresArray = itemObject.getJSONArray("genres");
+                                    for (int j = 0; j < genresArray.length(); j++) {
+                                        String genre = genresArray.getString(j);
+                                        genreOccurrences.put(genre, genreOccurrences.getOrDefault(genre, 0) + 1);
+                                    }
+                                } else {
+                                    JSONObject trackObject = itemObject.getJSONObject("track");
+                                    JSONObject album = trackObject.getJSONObject("album");
+                                    String trackName = trackObject.getString("name");
+                                    JSONArray artistArrayOfObjects = trackObject.getJSONArray("artists");
+                                    JSONObject artistObject = artistArrayOfObjects.getJSONObject(0);
+                                    //JSONArray images = artistObject.getJSONArray("images");
+                                    String artistName = artistObject.getString("name");
+                                    //String artistImageUrl = images.getJSONObject(0).getString("url");
+                                    String artistId = artistObject.getString("id");
+                                    String trackId = trackObject.getString("id");
+                                    JSONArray trackImages = album.getJSONArray("images");
+                                    String trackImageUrl = trackImages.getJSONObject(0).getString("url");
+                                    artistNames.add(artistName);
+                                    artistImages.add(trackImageUrl);
+                                    artistIds.add(artistId);
+                                    songs.add(trackName);
+                                    songImages.add(trackImageUrl);
+                                    songIds.add(trackId);
+                                    TrackDetails details = trackDetailsMap.getOrDefault(trackId, new TrackDetails(
+                                            trackName,
+                                            trackId,
+                                            trackImageUrl,
+                                            artistName,
+                                            artistId,
+                                            trackImageUrl
+                                    ));
+                                    details.increaseOccurrences();
+                                    trackDetailsMap.put(trackId, details);
                                 }
-                            } else {
-                                songs.add(name);
-                                // Assuming tracks don't directly give genres but leaving placeholder logic
                             }
-                        }
 
-                        synchronized (CreateFragment.this) {
-                            completedCalls++;
-                            if (completedCalls == 2) {
-                                checkAndUpdateFirestore(updates, artistNames, songs, new ArrayList<>(genres), timeRange);
-                                completedCalls = 0;
+                            synchronized (CreateFragment.this) {
+                                completedCalls++;
+                                if (completedCalls == 2) {
+                                    // Sort genres by occurrences
+                                    List<Map.Entry<String, Integer>> list = new ArrayList<>(genreOccurrences.entrySet());
+                                    list.sort(Map.Entry.comparingByValue(Comparator.reverseOrder()));
+
+                                    // Collect top genres based on occurrence, prioritizing tracks if needed
+                                    int count = 0;
+                                    for (Map.Entry<String, Integer> entry : list) {
+                                        if (count < 5) {
+                                            finalGenres.add(entry.getKey());
+                                            count++;
+                                        } else break;
+                                    }
+
+                                    // If less than 5 genres have more than one occurrence, add from tracks
+                                    if (finalGenres.size() < 5) {
+                                        for (String genre : trackGenres) {
+                                            if (!finalGenres.contains(genre)) {
+                                                finalGenres.add(genre);
+                                                if (finalGenres.size() == 5) break;
+                                            }
+                                        }
+                                    }
+
+                                    // Now sort and select the top 5 tracks based on occurrences
+                                    List<TrackDetails> sortedTracks = new ArrayList<>(trackDetailsMap.values());
+                                    Collections.sort(sortedTracks, (t1, t2) -> Integer.compare(t2.getOccurrences(), t1.getOccurrences()));
+
+                                    // Trim the list or fill with the most recent if less than 5
+                                    List<TrackDetails> finalTrackList = sortedTracks.size() > 5 ? sortedTracks.subList(0, 5) : sortedTracks;
+                                    // If less than 5, you might need to fetch more recent tracks or handle accordingly
+                                    if (finalTrackList.size() < 5) {
+                                        for (int i = 0; i < songs.size(); i++) {
+                                            if (!finalTrackList.contains(songs.get(i))) {
+                                                finalTrackList.add(new TrackDetails(
+                                                        songs.get(i),
+                                                        songIds.get(i),
+                                                        songImages.get(i),
+                                                        artistNames.get(i),
+                                                        artistIds.get(i),
+                                                        artistImages.get(i)
+                                                ));
+                                                if (finalTrackList.size() == 5) break;
+                                            }
+                                        }
+                                        for (String genre : trackGenres) {
+                                            if (!finalGenres.contains(genre)) {
+                                                finalGenres.add(genre);
+                                                if (finalGenres.size() == 5) break;
+                                            }
+                                        }
+                                    }
+                                    // Now update your genres, tracks, images, and artists lists based on finalTrackList
+                                    songs.clear();
+                                    songIds.clear();
+                                    songImages.clear();
+                                    artistNames.clear();
+                                    artistIds.clear();
+                                    artistImages.clear();
+                                    for (TrackDetails detail : finalTrackList) {
+                                        songs.add(detail.getTrackName());
+                                        songIds.add(detail.getTrackId());
+                                        songImages.add(detail.getTrackImage());
+                                        artistsHashSet.add(detail.getArtistName());
+                                        artistIds.add(detail.getArtistId());
+                                        artistImages.add(detail.getArtistImage());
+                                    }
+                                    artistNames.addAll(artistsHashSet);
+
+                                    checkAndUpdateFirestore(updates, artistNames, songs, finalGenres, artistImages, songImages, artistIds, songIds, timeRange);
+                                    completedCalls = 0;
+                                }
                             }
+                        } catch (JSONException e) {
+                            Toast.makeText(getContext(), "Failed to parse data: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                            Log.e("DataCheck", "Failed to parse data: " + e.getMessage());
                         }
-                    } catch (JSONException e) {
-                        Toast.makeText(getContext(), "Failed to parse data: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                    }
-                });
-            }
-        };
+                    });
+                }
+            };
 
-        // Artist request
-        call = mOkHttpClient.newCall(new Request.Builder()
-                .url("https://api.spotify.com/v1/me/top/artists?time_range=" + timeRange + "&limit=5")
-                .addHeader("Authorization", "Bearer " + accessToken)
-                .build());
-        call.enqueue(callback);
+            // Recently played request
+            call = mOkHttpClient.newCall(new Request.Builder()
+                    .url("https://api.spotify.com/v1/me/player/recently-played?limit=50")
+                    .addHeader("Authorization", "Bearer " + accessToken)
+                    .build());
+            call.enqueue(callback);
 
-        // Tracks request
-        call = mOkHttpClient.newCall(new Request.Builder()
-                .url("https://api.spotify.com/v1/me/top/tracks?time_range=" + timeRange + "&limit=5")
-                .addHeader("Authorization", "Bearer " + accessToken)
-                .build());
-        call.enqueue(callback);
+            // Artist request
+            call = mOkHttpClient.newCall(new Request.Builder()
+                    .url("https://api.spotify.com/v1/me/top/artists?time_range=short_term&limit=5")
+                    .addHeader("Authorization", "Bearer " + accessToken)
+                    .build());
+            call.enqueue(callback);
+        } else {
+
+            // Define the callback as a local variable for reuse
+            Callback callback = new Callback() {
+                @Override
+                public void onFailure(@NotNull Call call, @NotNull IOException e) {
+                    getActivity().runOnUiThread(() -> Toast.makeText(getContext(), "Failed to fetch data: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+                    // Consider also incrementing completedCalls here or setting a flag to avoid hanging if one call fails
+                }
+
+                @Override
+                public void onResponse(@NotNull Call call, @NotNull Response response) throws IOException {
+                    String responseData = response.body().string();
+                    getActivity().runOnUiThread(() -> {
+                        try {
+                            JSONObject jsonObject = new JSONObject(responseData);
+                            JSONArray items = jsonObject.getJSONArray("items");
+
+                            for (int i = 0; i < items.length(); i++) {
+                                JSONObject itemObject = items.getJSONObject(i);
+                                String name = itemObject.getString("name");
+                                String id = itemObject.getString("id");
+
+                                // Check if this was a call for artists or tracks
+                                if (call.request().url().toString().contains("/top/artists")) {
+                                    JSONArray images = itemObject.getJSONArray("images");
+                                    String imageUrl = images.getJSONObject(0).getString("url");
+                                    artistNames.add(name);
+                                    artistImages.add(imageUrl);
+                                    artistIds.add(id);
+                                    JSONArray genresArray = itemObject.getJSONArray("genres");
+                                    for (int j = 0; j < genresArray.length(); j++) {
+                                        String genre = genresArray.getString(j);
+                                        genreOccurrences.put(genre, genreOccurrences.getOrDefault(genre, 0) + 1);
+                                    }
+                                } else {
+                                    JSONObject album = itemObject.getJSONObject("album");
+                                    JSONArray trackImages = album.getJSONArray("images");
+                                    String trackImageUrl = trackImages.getJSONObject(0).getString("url");
+                                    songs.add(name);
+                                    songImages.add(trackImageUrl);
+                                    songIds.add(id);
+                                    // Assuming tracks don't directly give genres but leaving placeholder logic
+                                }
+                            }
+
+                            synchronized (CreateFragment.this) {
+                                completedCalls++;
+                                if (completedCalls == 2) {
+                                    // Sort genres by occurrences
+                                    List<Map.Entry<String, Integer>> list = new ArrayList<>(genreOccurrences.entrySet());
+                                    list.sort(Map.Entry.comparingByValue(Comparator.reverseOrder()));
+
+                                    // Collect top genres based on occurrence, prioritizing tracks if needed
+                                    int count = 0;
+                                    for (Map.Entry<String, Integer> entry : list) {
+                                        if (count < 5) {
+                                            finalGenres.add(entry.getKey());
+                                            count++;
+                                        } else break;
+                                    }
+
+                                    // If less than 5 genres have more than one occurrence, add from tracks
+                                    if (finalGenres.size() < 5) {
+                                        for (String genre : trackGenres) {
+                                            if (!finalGenres.contains(genre)) {
+                                                finalGenres.add(genre);
+                                                if (finalGenres.size() == 5) break;
+                                            }
+                                        }
+                                    }
+                                    checkAndUpdateFirestore(updates, artistNames, songs, finalGenres, artistImages, songImages, artistIds, songIds, timeRange);
+                                    completedCalls = 0;
+                                }
+                            }
+                        } catch (JSONException e) {
+                            Toast.makeText(getContext(), "Failed to parse data: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                        }
+                    });
+                }
+            };
+
+            // Artist request
+            call = mOkHttpClient.newCall(new Request.Builder()
+                    .url("https://api.spotify.com/v1/me/top/artists?time_range=" + timeRange + "&limit=5")
+                    .addHeader("Authorization", "Bearer " + accessToken)
+                    .build());
+            call.enqueue(callback);
+
+            // Tracks request
+            call = mOkHttpClient.newCall(new Request.Builder()
+                    .url("https://api.spotify.com/v1/me/top/tracks?time_range=" + timeRange + "&limit=5")
+                    .addHeader("Authorization", "Bearer " + accessToken)
+                    .build());
+            call.enqueue(callback);
+        }
     }
 
-    private void checkAndUpdateFirestore(HashMap<String, Object> updates, ArrayList<String> artistNames, ArrayList<String> songs, ArrayList<String> genres, String timeRange) {
+    private void checkAndUpdateFirestore(
+            HashMap<String, Object> updates,
+            ArrayList<String> artistNames,
+            ArrayList<String> songs,
+            ArrayList<String> genres,
+            ArrayList<String> artistImages,
+            ArrayList<String> songImages,
+            ArrayList<String> artistIds,
+            ArrayList<String> songIds,
+            String timeRange
+    ) {
         if (timeRange != null) {
             updates.put("timeRange", timeRange);
         } else {
@@ -283,9 +500,14 @@ public class CreateFragment extends Fragment {
         updates.put("topArtists", artistNames);
         updates.put("topSongs", songs);
         updates.put("topGenres", genres);
+        updates.put("artistImages", artistImages);
+        updates.put("songImages", songImages);
+        updates.put("artistIds", artistIds);
+        updates.put("songIds", songIds);
         //parent.put(new Date().toString(), updates);
         SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmmss", Locale.getDefault());
         String dateDocumentId = sdf.format(new Date());
+        updates.put("dateTime", dateDocumentId);
         db.collection("users").document(user.getUid())
                 .collection("data").document(dateDocumentId)
                 .set(updates, SetOptions.merge())
@@ -307,5 +529,53 @@ public class CreateFragment extends Fragment {
         super.onDestroyView();
         mBinding = null;
         cancelCall();
+    }
+}
+
+class TrackDetails {
+    private String trackName;
+    private String trackId;
+    private String trackImage;
+    private String artistName;
+    private String artistId;
+    private String artistImage;
+    private int occurrences = 0;
+    // Add other fields as needed, e.g., artistName, imageUrl
+
+    public TrackDetails(String trackName, String trackId, String trackImage, String artistName, String artistId, String artistImage) {
+        this.trackName = trackName;
+        this.trackId = trackId;
+        this.trackImage = trackImage;
+        this.artistName = artistName;
+        this.artistId = artistId;
+        this.artistImage = artistImage;
+    }
+
+    public void increaseOccurrences() {
+        this.occurrences++;
+    }
+
+    public int getOccurrences() {
+        return occurrences;
+    }
+
+    // Add getters for other details
+    public String getTrackName() {
+        return trackName;
+    }
+    public String getTrackId() {
+        return trackId;
+    }
+    public String getTrackImage() {
+        return trackImage;
+    }
+    public String getArtistName() {
+        return artistName;
+    }
+    public String getArtistId() {
+        return artistId;
+    }
+    public String getArtistImage() {
+        return artistImage;
     }
 }

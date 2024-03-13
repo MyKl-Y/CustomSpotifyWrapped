@@ -1,5 +1,7 @@
 package com.example.spotifywrapped;
 
+import android.util.Log;
+
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentActivity;
@@ -14,6 +16,8 @@ public class StoryPagerAdapter extends FragmentStateAdapter {
 
     public void setData(SpotifyDataModel data) {
         this.storyData = data;
+        Log.d("DataCheck", "Story Pager Adapter Set: " + data.topArtists);
+        Log.d("DataCheck", "Story Pager Adapter Set: " + storyData.topArtists);
         notifyDataSetChanged();
     }
 
@@ -22,6 +26,7 @@ public class StoryPagerAdapter extends FragmentStateAdapter {
     public Fragment createFragment(int position) {
         switch (position) {
             case 0:
+                Log.d("DataCheck", "Story Pager Adapter Create: " + storyData.dateTime);
                 return SummaryStartFragment.newInstance(storyData);
             case 1:
                 return TopArtistsFragment.newInstance(storyData);

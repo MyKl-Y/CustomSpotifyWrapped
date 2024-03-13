@@ -31,9 +31,9 @@ public class SummaryPlayerActivity extends FragmentActivity {
 
         viewPager = findViewById(R.id.viewPager);
         storyPagerAdapter = new StoryPagerAdapter(this);
-        viewPager.setAdapter(storyPagerAdapter);
 
         String documentId = getIntent().getStringExtra("documentId");
+        Log.d("DataCheck", "Document ID: " + documentId);
 
         fetchDataAndSetupStories(documentId);
     }
@@ -45,7 +45,11 @@ public class SummaryPlayerActivity extends FragmentActivity {
                 .addOnCompleteListener(task -> {
                     if (task.isSuccessful()) {
                         SpotifyDataModel data = task.getResult().toObject(SpotifyDataModel.class);
+                        Log.d("DataCheck", "Date Time: " + data.dateTime); // Add this log
                         storyPagerAdapter.setData(data);
+                        viewPager.setAdapter(storyPagerAdapter);
+                    } else {
+                        Log.d("DataCheck", "Error fetching data", task.getException());
                     }
                 });
     }

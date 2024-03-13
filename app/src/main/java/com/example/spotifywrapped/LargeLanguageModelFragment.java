@@ -8,24 +8,28 @@ import android.view.ViewGroup;
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 
-import com.example.spotifywrapped.databinding.TopGenresBinding;
+import com.example.spotifywrapped.databinding.LargeLanguageModelBinding;
 
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Random;
 
-public class TopGenresFragment extends Fragment {
-    private TopGenresBinding binding;
+public class LargeLanguageModelFragment extends Fragment {
+    private LargeLanguageModelBinding binding;
+
+    private String llm;
 
     private ArrayList<String> artists;
+    private ArrayList<String> songs;
+    private ArrayList<String> genres;
 
-    public TopGenresFragment() {
+    public LargeLanguageModelFragment() {
 
     }
 
-    public static TopGenresFragment newInstance(SpotifyDataModel data) {
-        TopGenresFragment fragment = new TopGenresFragment();
+    public static LargeLanguageModelFragment newInstance(SpotifyDataModel data) {
+        LargeLanguageModelFragment fragment = new LargeLanguageModelFragment();
         Bundle args = new Bundle();
+        args.putStringArrayList("artists", (ArrayList<String>) data.topArtists);
+        args.putStringArrayList("songs", (ArrayList<String>) data.topSongs);
         args.putStringArrayList("genres", (ArrayList<String>) data.topGenres);
         fragment.setArguments(args);
         return fragment;
@@ -35,7 +39,9 @@ public class TopGenresFragment extends Fragment {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         if (getArguments() != null) {
-            artists = getArguments().getStringArrayList("genres");
+            artists = getArguments().getStringArrayList("artists");
+            songs = getArguments().getStringArrayList("songs");
+            genres = getArguments().getStringArrayList("genres");
         }
     }
 
@@ -43,7 +49,7 @@ public class TopGenresFragment extends Fragment {
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         // Inflate the layout for this fragment
-        binding = TopGenresBinding.inflate(inflater, container, false);
+        binding = LargeLanguageModelBinding.inflate(inflater, container, false);
         return binding.getRoot();
     }
 
@@ -51,11 +57,6 @@ public class TopGenresFragment extends Fragment {
     public void onViewCreated(@NonNull View view, Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-       binding.genre1TextView.setText("1. " + artists.get(0));
-       binding.genre2TextView.setText("2. " + artists.get(1));
-       binding.genre3TextView.setText("3. " + artists.get(2));
-       binding.genre4TextView.setText("4. " + artists.get(3));
-       binding.genre5TextView.setText("5. " + artists.get(4));
+        binding.textView3.setText(llm);
     }
-
 }

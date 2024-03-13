@@ -8,14 +8,18 @@ import android.view.ViewGroup;
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 
+import com.bumptech.glide.Glide;
 import com.example.spotifywrapped.databinding.SummaryEndBinding;
+
+import java.util.ArrayList;
 
 public class SummaryEndFragment extends Fragment {
     private SummaryEndBinding binding;
 
-    private String[] artists;
-    private String[] songs;
-    private String[] genres;
+    private ArrayList<String> artists;
+    private ArrayList<String> songs;
+    private ArrayList<String> genres;
+    private ArrayList<String> images;
 
     public SummaryEndFragment() {
 
@@ -24,9 +28,10 @@ public class SummaryEndFragment extends Fragment {
     public static SummaryEndFragment newInstance(SpotifyDataModel data) {
         SummaryEndFragment fragment = new SummaryEndFragment();
         Bundle args = new Bundle();
-        args.putStringArray("artists", (String[]) data.topArtists.toArray());
-        args.putStringArray("songs", (String[]) data.topSongs.toArray());
-        args.putStringArray("genres", (String[]) data.topGenres.toArray());
+        args.putStringArrayList("artists", (ArrayList<String>) data.topArtists);
+        args.putStringArrayList("songs", (ArrayList<String>) data.topSongs);
+        args.putStringArrayList("genres", (ArrayList<String>) data.topGenres);
+        args.putStringArrayList("images", (ArrayList<String>) data.songImages);
         fragment.setArguments(args);
         return fragment;
     }
@@ -35,7 +40,10 @@ public class SummaryEndFragment extends Fragment {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         if (getArguments() != null) {
-            artists = getArguments().getStringArray("artists");
+            artists = getArguments().getStringArrayList("artists");
+            songs = getArguments().getStringArrayList("songs");
+            genres = getArguments().getStringArrayList("genres");
+            images = getArguments().getStringArrayList("images");
         }
     }
 
@@ -51,27 +59,47 @@ public class SummaryEndFragment extends Fragment {
     public void onViewCreated(@NonNull View view, Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        binding.summaryArtist1TextView.setText("1. " + artists[0]);
-        binding.summaryArtist2TextView.setText("2. " + artists[1]);
-        binding.summaryArtist3TextView.setText("3. " + artists[2]);
-        binding.summaryArtist4TextView.setText("4. " + artists[3]);
-        binding.summaryArtist5TextView.setText("5. " + artists[4]);
+        binding.summaryArtist1TextView.setText("1. " + artists.get(0));
+        binding.summaryArtist2TextView.setText("2. " + artists.get(1));
+        binding.summaryArtist3TextView.setText("3. " + artists.get(2));
+        binding.summaryArtist4TextView.setText("4. " + artists.get(3));
+        binding.summaryArtist5TextView.setText("5. " + artists.get(4));
 
-        binding.summarySong1TextView.setText("1. " + songs[0]);
-        binding.summarySong2TextView.setText("2. " + songs[1]);
-        binding.summarySong3TextView.setText("3. " + songs[2]);
-        binding.summarySong4TextView.setText("4. " + songs[3]);
-        binding.summarySong5TextView.setText("5. " + songs[4]);
+        binding.summarySong1TextView.setText("1. " + songs.get(0));
+        binding.summarySong2TextView.setText("2. " + songs.get(1));
+        binding.summarySong3TextView.setText("3. " + songs.get(2));
+        binding.summarySong4TextView.setText("4. " + songs.get(3));
+        binding.summarySong5TextView.setText("5. " + songs.get(4));
 
         String genre = "";
-        for (int i = 0; i < genres.length; i++) {
-            if (i != genres.length - 1) {
-                genre.concat(genres[i] + ", ");
+        for (int i = 0; i < genres.size(); i++) {
+            if (i != genres.size() - 1) {
+                genre = genre.concat(genres.get(i) + ", ");
             } else {
-                genre.concat(genres[i]);
+                genre = genre.concat(genres.get(i));
             }
         }
 
-        binding.summaryGenresTextView.setText(genre);
+        binding.summaryGenresTextView.setText(capitalizeString(genre));
+
+        if (images != null && images.size() > 0) {
+            Glide.with(this)
+                    .load(images.get(0)) // Load the first image URL
+                    .into(binding.summaryImageView); // Set it to artistImageView
+        }
+    }
+
+    public static String capitalizeString(String string) {
+        char[] chars = string.toLowerCase().toCharArray();
+        boolean found = false;
+        for (int i = 0; i < chars.length; i++) {
+            if (!found && Character.isLetter(chars[i])) {
+                chars[i] = Character.toUpperCase(chars[i]);
+                found = true;
+            } else if (Character.isWhitespace(chars[i]) || chars[i]=='.' || chars[i]=='\'') { // You can add other chars here
+                found = false;
+            }
+        }
+        return String.valueOf(chars);
     }
 }

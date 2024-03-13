@@ -1,6 +1,7 @@
 package com.example.spotifywrapped;
 
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -22,7 +23,8 @@ public class SummaryStartFragment extends Fragment {
     public static SummaryStartFragment newInstance(SpotifyDataModel data) {
         SummaryStartFragment fragment = new SummaryStartFragment();
         Bundle args = new Bundle();
-        args.putString("date", data.documentId);
+        Log.d("DataCheck", "Summary Start Args: " + data.dateTime);
+        args.putString("date", data.dateTime);
         fragment.setArguments(args);
         return fragment;
     }
@@ -30,12 +32,14 @@ public class SummaryStartFragment extends Fragment {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Log.d("DataCheck", "Summary Start Create: " + getArguments().getString("date"));
         if (getArguments() != null) {
+            //date = getArguments().getString("date");
             String temp = getArguments().getString("date");
             date = String
                     .format("%s/%s/%s",
                             temp.substring(4,6),
-                            temp.substring(6, 8),
+                            temp.substring(6,8),
                             temp.substring(0,4));
         }
     }
@@ -52,6 +56,6 @@ public class SummaryStartFragment extends Fragment {
     public void onViewCreated(@NonNull View view, Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        binding.startTitleTextView.setText(date + "Wrapped");
+        binding.startTitleTextView.setText(date + " Wrapped");
     }
 }

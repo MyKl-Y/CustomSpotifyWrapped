@@ -17,6 +17,8 @@ android {
 
         manifestPlaceholders = [redirectSchemeName: "spotifywrapped", redirectHostName: "auth"]
 
+        vectorDrawables.useSupportLibrary = true
+
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
     buildFeatures {
@@ -39,6 +41,7 @@ dependencies {
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'com.google.android.material:material:1.11.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    implementation "androidx.viewpager2:viewpager2:1.0.0"
 
     // 2 Added for Spotify API and simplifying requests
     implementation 'com.spotify.android:auth:2.1.1'
@@ -57,6 +60,8 @@ dependencies {
     implementation 'androidx.preference:preference:1.2.0'
     // Added for instagram/snapchat like view features
     //implementation 'com.github.shts:StoriesProgressView:3.0.0'
+    implementation 'com.github.bumptech.glide:glide:4.12.0'
+    annotationProcessor 'com.github.bumptech.glide:compiler:4.12.0'
 
     // Add the dependencies for any other desired Firebase products
     // https://firebase.google.com/docs/android/setup#available-libraries

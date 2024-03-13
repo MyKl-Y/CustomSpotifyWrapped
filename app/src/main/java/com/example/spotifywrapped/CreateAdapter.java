@@ -21,6 +21,7 @@ public class CreateAdapter extends RecyclerView.Adapter<CreateAdapter.ViewHolder
     public CreateAdapter(List<SpotifyDataModel> data) {
         spotifyDataList = data;
     }
+    SpotifyDataModel dataModel = new SpotifyDataModel();
 
     @NonNull
     @Override
@@ -31,7 +32,7 @@ public class CreateAdapter extends RecyclerView.Adapter<CreateAdapter.ViewHolder
 
     @Override
     public void onBindViewHolder(@NonNull CreateAdapter.ViewHolder holder, int position) {
-        SpotifyDataModel dataModel = spotifyDataList.get(position);
+        dataModel = spotifyDataList.get(position);
         switch (dataModel.type) {
             case "New Years":
                 holder.cardTitle_textView.setText("To a New Year!");
@@ -39,7 +40,7 @@ public class CreateAdapter extends RecyclerView.Adapter<CreateAdapter.ViewHolder
             case "Halloween":
                 holder.cardTitle_textView.setText("Boo your Taste!");
                 break;
-            case "Christmas":
+            case "Holidays":
                 holder.cardTitle_textView.setText("Holly Jolly!");
                 break;
             default:
