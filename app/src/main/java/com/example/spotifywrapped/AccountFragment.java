@@ -476,6 +476,11 @@ public class AccountFragment extends Fragment {
                 builder.show();
             }
         });
+
+        mBinding.settingsImageButton.setOnClickListener(v -> {
+            NavHostFragment.findNavController(AccountFragment.this)
+                    .navigate(R.id.action_accountFragment_to_settingsFragment);
+        });
     }
 
     @Override

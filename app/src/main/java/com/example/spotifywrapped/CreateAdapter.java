@@ -5,6 +5,7 @@ import android.graphics.Color;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -40,7 +41,7 @@ public class CreateAdapter extends RecyclerView.Adapter<CreateAdapter.ViewHolder
             case "Halloween":
                 holder.cardTitle_textView.setText("Boo your Taste!");
                 break;
-            case "Holidays":
+            case "Holiday":
                 holder.cardTitle_textView.setText("Holly Jolly!");
                 break;
             default:
@@ -53,8 +54,22 @@ public class CreateAdapter extends RecyclerView.Adapter<CreateAdapter.ViewHolder
                         dataModel.documentId.substring(0,4));
         holder.date_textView.setText(formatedDate); // Assuming documentId is the formatted date
         holder.type_textView.setText(dataModel.type);
-        Random rnd = new Random();
-        holder.card.setCardBackgroundColor(Color.argb(255, rnd.nextInt(256), rnd.nextInt(256), rnd.nextInt(256)));
+        if (dataModel.type.equalsIgnoreCase("holiday")) {
+            holder.card.setCardBackgroundColor(Color.rgb(113, 142, 187));
+            holder.image.setImageResource(R.drawable.snowflake);
+        } else {
+            Random rnd = new Random();
+            int color = Color.argb(255, rnd.nextInt(256), rnd.nextInt(256), rnd.nextInt(256));
+            // Calculate the brightness of the color using the YIQ formula
+            int brightness = (int) ((Color.red(color) * 0.299) + (Color.green(color) * 0.587) + (Color.blue(color) * 0.114));
+
+            // Determine the text color based on the brightness
+            int textColor = (brightness > 128) ? Color.BLACK : Color.WHITE;
+            holder.card.setCardBackgroundColor(color);
+            holder.cardTitle_textView.setTextColor(textColor);
+            holder.date_textView.setTextColor(textColor);
+            holder.type_textView.setTextColor(textColor);
+        }
         holder.card.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v){
@@ -74,6 +89,7 @@ public class CreateAdapter extends RecyclerView.Adapter<CreateAdapter.ViewHolder
 
         TextView date_textView, type_textView, cardTitle_textView;
         CardView card;
+        ImageView image;
 
         ViewHolder(View itemView) {
             super(itemView);
@@ -81,6 +97,7 @@ public class CreateAdapter extends RecyclerView.Adapter<CreateAdapter.ViewHolder
             type_textView = itemView.findViewById(R.id.type_textView);
             cardTitle_textView = itemView.findViewById(R.id.cardTitle_textView);
             card = itemView.findViewById(R.id.pastWrapped_cardItem);
+            image = itemView.findViewById(R.id.type_imageView);
         }
     }
 

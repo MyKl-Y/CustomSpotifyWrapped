@@ -45,7 +45,6 @@ public class SummaryPlayerActivity extends FragmentActivity {
                 .addOnCompleteListener(task -> {
                     if (task.isSuccessful()) {
                         SpotifyDataModel data = task.getResult().toObject(SpotifyDataModel.class);
-                        Log.d("DataCheck", "Date Time: " + data.dateTime); // Add this log
                         storyPagerAdapter.setData(data);
                         viewPager.setAdapter(storyPagerAdapter);
                     } else {

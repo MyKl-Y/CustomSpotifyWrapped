@@ -34,13 +34,17 @@ public class SummaryStartFragment extends Fragment {
         super.onCreate(savedInstanceState);
         Log.d("DataCheck", "Summary Start Create: " + getArguments().getString("date"));
         if (getArguments() != null) {
-            //date = getArguments().getString("date");
-            String temp = getArguments().getString("date");
-            date = String
-                    .format("%s/%s/%s",
-                            temp.substring(4,6),
-                            temp.substring(6,8),
-                            temp.substring(0,4));
+            if (getArguments().getString("date").equalsIgnoreCase("holiday")) {
+                date = getArguments().getString("date");
+            } else {
+                //date = getArguments().getString("date");
+                String temp = getArguments().getString("date");
+                date = String
+                        .format("%s/%s/%s",
+                                temp.substring(4, 6),
+                                temp.substring(6, 8),
+                                temp.substring(0, 4));
+            }
         }
     }
 

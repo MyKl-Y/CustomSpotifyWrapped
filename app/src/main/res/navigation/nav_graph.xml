@@ -46,6 +46,15 @@
         <action
             android:id="@+id/action_AccountNavigation_to_EmailPasswordFragment"
             app:destination="@id/EmailPasswordFragment" />
+        <action
+            android:id="@+id/action_accountFragment_to_settingsFragment"
+            app:destination="@id/settingsFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/settingsFragment"
+        android:name="com.example.spotifywrapped.SettingsFragment"
+        android:label="Settings">
     </fragment>
 
 </navigation>

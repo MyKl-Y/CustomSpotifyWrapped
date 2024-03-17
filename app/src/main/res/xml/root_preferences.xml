@@ -1,6 +1,17 @@
 <PreferenceScreen
     xmlns:app="http://schemas.android.com/apk/res-auto">
-
+    <SwitchPreferenceCompat
+        app:key="holiday_notification_enabled"
+        app:title="Enable Holiday Notifications"
+        app:defaultValue="true" />
+    <ListPreference
+        app:key="theme_switch"
+        app:title="Choose Theme"
+        app:entries="@array/preference_options_titles"
+        app:entryValues="@array/preference_options_values"
+        app:defaultValue="1"
+        app:useSimpleSummaryProvider="true" />
+    <!--
     <PreferenceCategory
         app:title="@string/messages_header">
 
@@ -34,5 +45,5 @@
             app:dependency="sync"/>
 
     </PreferenceCategory>
-
+    -->
 </PreferenceScreen>

@@ -120,4 +120,21 @@
     <string name="attachment_summary_on">Automatically download attachments for incoming emails
     </string>
     <string name="attachment_summary_off">Only download attachments when manually requested</string>
+
+
+    <string name="option1">System</string>
+    <string name="option2">Day</string>
+    <string name="option3">Night</string>
+
+    <string-array name="preference_options_titles">
+        <item>@string/option1</item>
+        <item>@string/option2</item>
+        <item>@string/option3</item>
+    </string-array>
+
+    <string-array name="preference_options_values">
+        <item>1</item>
+        <item>2</item>
+        <item>3</item>
+    </string-array>
 </resources>

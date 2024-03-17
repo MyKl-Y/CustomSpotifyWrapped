@@ -116,9 +116,9 @@ public class CreateFragment extends Fragment {
                                 if (document.getId().substring(4,8).equals("0101")) {
                                     // New Years
                                     data.type = "New Years";
-                                } else if (document.getId().substring(4,8).equals("1225")) {
+                                } else if (document.getId().substring(4,6).equals("12")) {
                                     // Christmas
-                                    data.type = "Christmas";
+                                    data.type = "Holiday";
                                 } else if (document.getId().substring(4,8).equals("1031")) {
                                     // Halloween
                                     data.type = "Halloween";
@@ -151,6 +151,32 @@ public class CreateFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
+
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyyMM", Locale.getDefault());
+        String date = sdf.format(new Date());
+
+        if (date.substring(4,6).equals("12")) {
+            db.collection("users").document(user.getUid()).collection("data")
+                    .get()
+                    .addOnCompleteListener(task -> {
+                        if (task.isSuccessful()) {
+                            for (DocumentSnapshot document : task.getResult()) {
+                                if (document != null && document.exists()) {
+                                    if (document.getId().substring(0, 5).equals(date.substring(0,5)) && !(document.getString("timeRange").equalsIgnoreCase("Holiday"))) {
+                                        mBinding.createHolidayButton.setVisibility(View.GONE);
+                                        break;
+                                    } else {
+                                        mBinding.createHolidayButton.setVisibility(View.VISIBLE);
+                                    }
+                                }
+                            }
+                        } else {
+                            Log.e("Firestore", "Error getting documents: ", task.getException());
+                        }
+                    });
+        } else {
+            mBinding.createHolidayButton.setVisibility(View.GONE);
+        }
 
         mBinding.createWrappedButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -194,6 +220,15 @@ public class CreateFragment extends Fragment {
 
                 AlertDialog dialog = builder.create();
                 dialog.show();
+            }
+        });
+
+        mBinding.createHolidayButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                // Fetch and update UI after selection
+                getUserHoliday("Holiday");
+                mBinding.pastWrappedRecyclerView.invalidate();
             }
         });
     }
@@ -481,6 +516,123 @@ public class CreateFragment extends Fragment {
         }
     }
 
+    public void getUserHoliday(String type) {
+        if (accessToken == null) {
+            return;
+        }
+
+        // Reset completedCalls for this operation
+        completedCalls = 0;
+
+        HashMap<String, Object> updates = new HashMap<>();
+        ArrayList<String> popularities = new ArrayList<>();
+        ArrayList<String> artistNames = new ArrayList<>();
+        ArrayList<String> songs = new ArrayList<>();
+        ArrayList<String> artistImages = new ArrayList<>();
+        ArrayList<String> songImages = new ArrayList<>();
+        ArrayList<String> artistIds = new ArrayList<>();
+        ArrayList<String> songIds = new ArrayList<>();
+        ArrayList<String> artistTemp = new ArrayList<>();
+        ArrayList<String> songTemp = new ArrayList<>();
+        ArrayList<String> artistImageTemp = new ArrayList<>();
+        ArrayList<String> songImageTemp = new ArrayList<>();
+        ArrayList<String> artistIdTemp = new ArrayList<>();
+        ArrayList<String> songIdTemp = new ArrayList<>();
+        HashMap<Integer, Integer> popularityRatings = new HashMap<>();
+
+        if (type.equals("Holiday")) {
+            // Define the callback as a local variable for reuse
+            Callback callback = new Callback() {
+                @Override
+                public void onFailure(@NotNull Call call, @NotNull IOException e) {
+                    getActivity().runOnUiThread(() -> Toast.makeText(getContext(), "Failed to fetch data: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+                    // Consider also incrementing completedCalls here or setting a flag to avoid hanging if one call fails
+                }
+
+                @Override
+                public void onResponse(@NotNull Call call, @NotNull Response response) throws IOException {
+                    String responseData = response.body().string();
+                    getActivity().runOnUiThread(() -> {
+                        try {
+                            JSONObject jsonObject = new JSONObject(responseData);
+                            JSONArray tracks = jsonObject.getJSONArray("tracks");
+
+                            for (int i = 0; i < tracks.length(); i++) {
+                                JSONObject trackObject = tracks.getJSONObject(i);
+                                JSONObject album = trackObject.getJSONObject("album");
+                                String trackName = trackObject.getString("name");
+                                Integer popularity = (Integer) trackObject.getInt("popularity");
+                                JSONObject artistObject = album.getJSONArray("artists").getJSONObject(0);
+                                String artistName = artistObject.getString("name");
+                                String artistId = artistObject.getString("id");
+                                String trackId = trackObject.getString("id");
+                                JSONArray trackImages = album.getJSONArray("images");
+                                String trackImageUrl = trackImages.getJSONObject(0).getString("url");
+
+                                songTemp.add(trackName);
+                                songIdTemp.add(trackId);
+                                songImageTemp.add(trackImageUrl);
+                                popularityRatings.put(i, popularity);
+                                artistTemp.add(artistName);
+                                artistIdTemp.add(artistId);
+                                artistImageTemp.add(trackImageUrl);
+                            }
+
+                            synchronized (CreateFragment.this) {
+                                completedCalls++;
+                                if (completedCalls == 1) {
+                                    entriesSortedByValues(popularityRatings);
+                                    for (int i = 0; i < 5; i++) {
+                                        Map.Entry<Integer, Integer> entry = popularityRatings.entrySet().iterator().next();
+                                        int key = entry.getKey();
+                                        artistNames.add(artistTemp.get(key));
+                                        artistIds.add(artistIdTemp.get(key));
+                                        artistImages.add(artistImageTemp.get(key));
+                                        popularities.add(entry.getValue().toString());
+                                        songs.add(songTemp.get(key));
+                                        songIds.add(songIdTemp.get(key));
+                                        songImages.add(songImageTemp.get(key));
+                                        popularityRatings.remove(key);
+                                    }
+                                    checkAndUpdateFirestore(updates, artistNames, songs, popularities, artistImages, songImages, artistIds, songIds, type);
+                                    completedCalls = 0;
+                                }
+                            }
+                        } catch (JSONException e) {
+                            Toast.makeText(getContext(), "Failed to parse data: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                            Log.e("DataCheck", "Failed to parse holiday data: " + e.getMessage());
+                        }
+                    });
+                }
+            };
+
+            // Recommendations request
+            call = mOkHttpClient.newCall(new Request.Builder()
+                    .url("https://api.spotify.com/v1/recommendations?seed_genres=" + type.toLowerCase() + "s&target_popularity=100")
+                    .addHeader("Authorization", "Bearer " + accessToken)
+                    .build());
+            call.enqueue(callback);
+        }
+    }
+
+    static <K,V extends Comparable<? super V>>
+    List<Map.Entry<K, V>> entriesSortedByValues(Map<K,V> map) {
+
+        List<Map.Entry<K,V>> sortedEntries = new ArrayList<Map.Entry<K,V>>(map.entrySet());
+
+        Collections.sort(sortedEntries,
+                new Comparator<Map.Entry<K,V>>() {
+                    @Override
+                    public int compare(Map.Entry<K,V> e1, Map.Entry<K,V> e2) {
+                        return e2.getValue().compareTo(e1.getValue());
+                    }
+                }
+        );
+
+        return sortedEntries;
+    }
+
+
     private void checkAndUpdateFirestore(
             HashMap<String, Object> updates,
             ArrayList<String> artistNames,
@@ -507,7 +659,11 @@ public class CreateFragment extends Fragment {
         //parent.put(new Date().toString(), updates);
         SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmmss", Locale.getDefault());
         String dateDocumentId = sdf.format(new Date());
-        updates.put("dateTime", dateDocumentId);
+        if (timeRange.equals("Holiday")) {
+            updates.put("dateTime", timeRange);
+        } else {
+            updates.put("dateTime", dateDocumentId);
+        }
         db.collection("users").document(user.getUid())
                 .collection("data").document(dateDocumentId)
                 .set(updates, SetOptions.merge())
