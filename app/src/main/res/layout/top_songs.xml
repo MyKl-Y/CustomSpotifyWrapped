@@ -71,6 +71,7 @@
                 android:fontFamily="@font/bungee_shade"
                 android:text="TextView"
                 android:textAppearance="@style/TextAppearance.AppCompat.Large"
+                android:textColor="@color/black"
                 android:textStyle="bold" />
         </LinearLayout>
 
@@ -98,6 +99,7 @@
                 android:fontFamily="@font/bungee_shade"
                 android:text="TextView"
                 android:textAppearance="@style/TextAppearance.AppCompat.Large"
+                android:textColor="@color/black"
                 android:textStyle="bold" />
         </LinearLayout>
 
@@ -125,6 +127,7 @@
                 android:fontFamily="@font/bungee_shade"
                 android:text="TextView"
                 android:textAppearance="@style/TextAppearance.AppCompat.Large"
+                android:textColor="@color/black"
                 android:textStyle="bold" />
         </LinearLayout>
 
@@ -152,6 +155,7 @@
                 android:fontFamily="@font/bungee_shade"
                 android:text="TextView"
                 android:textAppearance="@style/TextAppearance.AppCompat.Large"
+                android:textColor="@color/black"
                 android:textStyle="bold" />
         </LinearLayout>
 
@@ -179,6 +183,7 @@
                 android:fontFamily="@font/bungee_shade"
                 android:text="TextView"
                 android:textAppearance="@style/TextAppearance.AppCompat.Large"
+                android:textColor="@color/black"
                 android:textStyle="bold" />
         </LinearLayout>
 

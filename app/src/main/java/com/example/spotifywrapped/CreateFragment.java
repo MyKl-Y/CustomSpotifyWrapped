@@ -26,6 +26,7 @@ import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.SetOptions;
 
+import org.checkerframework.checker.units.qual.A;
 import org.jetbrains.annotations.NotNull;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -44,6 +45,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
@@ -66,6 +69,10 @@ public class CreateFragment extends Fragment {
     private Call call;
 
     private Map<String, Object> spotifyData = new HashMap<>();
+
+    Map<String, ArrayList<String>> recommendations = new HashMap<>();
+    private ExecutorService executorService = Executors.newFixedThreadPool(2); // Adjust thread count as needed
+
 
     @Nullable
     @Override
@@ -393,7 +400,24 @@ public class CreateFragment extends Fragment {
                                     }
                                     artistNames.addAll(artistsHashSet);
 
-                                    checkAndUpdateFirestore(updates, artistNames, songs, finalGenres, artistImages, songImages, artistIds, songIds, timeRange);
+                                    executorService.execute(() -> {
+                                        // Perform network calls here instead of the main thread
+
+                                        CountDownLatch latch = new CountDownLatch(1);
+
+                                        // Assume getRecommendations is refactored to operate in the background and uses the latch correctly
+                                        getRecommendations(artistIds.get(0), artistIds.get(1), songIds.get(0), songIds.get(1), finalGenres.get(0), latch);
+
+                                        try {
+                                            latch.await(); // This waits in the background, not blocking the UI thread
+                                            getActivity().runOnUiThread(() -> {
+                                                // Update your UI here after background work is complete
+                                                checkAndUpdateFirestore(updates, artistNames, songs, finalGenres, artistImages, songImages, artistIds, songIds, timeRange, recommendations);
+                                            });
+                                        } catch (InterruptedException e) {
+                                            e.printStackTrace();
+                                        }
+                                    });
                                     completedCalls = 0;
                                 }
                             }
@@ -489,7 +513,25 @@ public class CreateFragment extends Fragment {
                                             }
                                         }
                                     }
-                                    checkAndUpdateFirestore(updates, artistNames, songs, finalGenres, artistImages, songImages, artistIds, songIds, timeRange);
+
+                                    executorService.execute(() -> {
+                                        // Perform network calls here instead of the main thread
+
+                                        CountDownLatch latch = new CountDownLatch(1);
+
+                                        // Assume getRecommendations is refactored to operate in the background and uses the latch correctly
+                                        getRecommendations(artistIds.get(0), artistIds.get(1), songIds.get(0), songIds.get(1), finalGenres.get(0), latch);
+
+                                        try {
+                                            latch.await(); // This waits in the background, not blocking the UI thread
+                                            getActivity().runOnUiThread(() -> {
+                                                // Update your UI here after background work is complete
+                                                checkAndUpdateFirestore(updates, artistNames, songs, finalGenres, artistImages, songImages, artistIds, songIds, timeRange, recommendations);
+                                            });
+                                        } catch (InterruptedException e) {
+                                            e.printStackTrace();
+                                        }
+                                    });
                                     completedCalls = 0;
                                 }
                             }
@@ -513,7 +555,85 @@ public class CreateFragment extends Fragment {
                     .addHeader("Authorization", "Bearer " + accessToken)
                     .build());
             call.enqueue(callback);
+
         }
+    }
+
+    public void getRecommendations(String artist1, String artist2, String song1, String song2, String genre, CountDownLatch latch) {
+        ArrayList<String> trackName2 = new ArrayList<>();
+        Map<String, ArrayList<String>> trackNames = new HashMap<>();
+        ArrayList<String> trackId2 = new ArrayList<>();
+        Map<String, ArrayList<String>> trackIds = new HashMap<>();
+        ArrayList<String> trackImage2 = new ArrayList<>();
+        Map<String, ArrayList<String>> trackImages = new HashMap<>();
+        ArrayList<String> artistName2 = new ArrayList<>();
+        Map<String, ArrayList<String>> artistNames = new HashMap<>();
+        ArrayList<String> artistId2 = new ArrayList<>();
+        Map<String, ArrayList<String>> artistIds = new HashMap<>();
+
+        Callback callback = new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                getActivity().runOnUiThread(() -> Toast.makeText(getContext(), "Failed to fetch data: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+                latch.countDown();
+            }
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                String responseData = response.body().string();
+                getActivity().runOnUiThread(() -> {
+                    try {
+                        JSONObject jsonObject = new JSONObject(responseData);
+                        JSONArray tracks = jsonObject.getJSONArray("tracks");
+
+                        for (int i = 0; i < tracks.length(); i++) {
+                            // Track
+                            JSONObject trackObject = tracks.getJSONObject(i);
+                            String trackName = trackObject.getString("name");
+                            String trackId = trackObject.getString("id");
+                            // Album Cover
+                            JSONObject albumObject = trackObject.getJSONObject("album");
+                            JSONObject albumCover = albumObject.getJSONArray("images").getJSONObject(0);
+                            String imageUrl = albumCover.getString("url");
+                            // Artist
+                            JSONObject artistObject = trackObject.getJSONArray("artists").getJSONObject(0);
+                            String artistName = artistObject.getString("name");
+                            String artistId = artistObject.getString("id");
+
+                            trackName2.add(trackName);
+                            trackId2.add(trackId);
+                            trackImage2.add(imageUrl);
+                            artistId2.add(artistId);
+                            artistName2.add(artistName);
+                        }
+
+                        synchronized (CreateFragment.this) {
+                            //completedCalls++;
+                            //if (completedCalls == 3) {
+                                recommendations.put("artistNames", artistName2);
+                                recommendations.put("artistIds", artistId2);
+                                recommendations.put("trackIds", trackId2);
+                                recommendations.put("trackNames", trackName2);
+                                recommendations.put("trackImages", trackImage2);
+                                latch.countDown();
+                            //}
+                        }
+                    } catch (JSONException e) {
+                        Toast.makeText(getContext(), "Failed to parse data: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                        Log.e("DataCheck", "Failed to parse data: " + e.getMessage());
+                    }
+                });
+            }
+        };
+
+
+        // Tracks and Artists Recommendations
+        call = mOkHttpClient.newCall(new Request.Builder()
+                .url("https://api.spotify.com/v1/recommendations?limit=5&seed_artists="
+                        + artist1 + "," + artist2 + "&seed_genres=" + genre + "&seed_tracks=" + song1 + "," + song2)
+                .addHeader("Authorization", "Bearer " + accessToken)
+                .build());
+        call.enqueue(callback);
     }
 
     public void getUserHoliday(String type) {
@@ -579,8 +699,8 @@ public class CreateFragment extends Fragment {
                             }
 
                             synchronized (CreateFragment.this) {
-                                completedCalls++;
-                                if (completedCalls == 1) {
+                                completedCalls += 2;
+                                if (completedCalls == 2) {
                                     entriesSortedByValues(popularityRatings);
                                     for (int i = 0; i < 5; i++) {
                                         Map.Entry<Integer, Integer> entry = popularityRatings.entrySet().iterator().next();
@@ -594,7 +714,26 @@ public class CreateFragment extends Fragment {
                                         songImages.add(songImageTemp.get(key));
                                         popularityRatings.remove(key);
                                     }
-                                    checkAndUpdateFirestore(updates, artistNames, songs, popularities, artistImages, songImages, artistIds, songIds, type);
+
+                                    executorService.execute(() -> {
+                                        // Perform network calls here instead of the main thread
+
+                                        CountDownLatch latch = new CountDownLatch(1);
+
+                                        // Assume getRecommendations is refactored to operate in the background and uses the latch correctly
+                                        getRecommendations(artistIds.get(0), artistIds.get(1), songIds.get(0), songIds.get(1), "Holiday", latch);
+
+                                        try {
+                                            latch.await(); // This waits in the background, not blocking the UI thread
+                                            getActivity().runOnUiThread(() -> {
+                                                // Update your UI here after background work is complete
+                                                checkAndUpdateFirestore(updates, artistNames, songs, popularities, artistImages, songImages, artistIds, songIds, type, recommendations);
+                                            });
+                                        } catch (InterruptedException e) {
+                                            e.printStackTrace();
+                                        }
+                                    });
+
                                     completedCalls = 0;
                                 }
                             }
@@ -642,13 +781,15 @@ public class CreateFragment extends Fragment {
             ArrayList<String> songImages,
             ArrayList<String> artistIds,
             ArrayList<String> songIds,
-            String timeRange
+            String timeRange,
+            Map<String, ArrayList<String>> recommendations
     ) {
         if (timeRange != null) {
             updates.put("timeRange", timeRange);
         } else {
             updates.put("timeRange", "1 Week");
         }
+
         updates.put("topArtists", artistNames);
         updates.put("topSongs", songs);
         updates.put("topGenres", genres);
@@ -656,6 +797,7 @@ public class CreateFragment extends Fragment {
         updates.put("songImages", songImages);
         updates.put("artistIds", artistIds);
         updates.put("songIds", songIds);
+        updates.put("recommendations", recommendations);
         //parent.put(new Date().toString(), updates);
         SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmmss", Locale.getDefault());
         String dateDocumentId = sdf.format(new Date());
