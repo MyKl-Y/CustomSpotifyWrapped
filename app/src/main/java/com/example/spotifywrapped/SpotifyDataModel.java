@@ -17,6 +17,8 @@ public class SpotifyDataModel {
     public List<String> artistIds;
     public List<String> songIds;
     public Map<String, List<String>> recommendations;
+    public String llmImage;
+    public String llmText;
 
     // Default constructor required for Firestore data mapping
     public SpotifyDataModel() {}

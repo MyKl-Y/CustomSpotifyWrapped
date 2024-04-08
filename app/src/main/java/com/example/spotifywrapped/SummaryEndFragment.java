@@ -1,9 +1,18 @@
 package com.example.spotifywrapped;
 
+import android.content.ContentValues;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.drawable.Drawable;
+import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
+import android.provider.MediaStore;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
@@ -11,7 +20,11 @@ import androidx.fragment.app.Fragment;
 import com.bumptech.glide.Glide;
 import com.example.spotifywrapped.databinding.SummaryEndBinding;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Date;
 
 public class SummaryEndFragment extends Fragment {
     private SummaryEndBinding binding;
@@ -87,6 +100,13 @@ public class SummaryEndFragment extends Fragment {
                     .load(images.get(0)) // Load the first image URL
                     .into(binding.summaryImageView); // Set it to artistImageView
         }
+
+        binding.saveImageButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                saveBitmap(viewToImage(binding.getRoot()), new Date().toString() + "-spotify-wrapped");
+            }
+        });
     }
 
     public static String capitalizeString(String string) {
@@ -102,4 +122,52 @@ public class SummaryEndFragment extends Fragment {
         }
         return String.valueOf(chars);
     }
+
+    private Bitmap viewToImage(View view) {
+        Bitmap returnedBitmap = Bitmap.createBitmap(view.getWidth(), view.getHeight(), Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(returnedBitmap);
+        Drawable bgDrawable = view.getBackground();
+        if (bgDrawable != null)
+            bgDrawable.draw(canvas);
+        else
+            canvas.drawColor(Color.WHITE);
+        view.draw(canvas);
+
+        return returnedBitmap;
+    }
+
+    private void saveBitmap(Bitmap bitmap, String fileName) {
+        FileOutputStream out = null;
+        try {
+            // For API level >= 29
+            ContentValues values = new ContentValues();
+            values.put(MediaStore.MediaColumns.DISPLAY_NAME, fileName);
+            values.put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg");
+            values.put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + File.separator + "YourAppFolder");
+            Uri uri = getContext().getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
+
+            if (uri != null) {
+                out = (FileOutputStream) getContext().getContentResolver().openOutputStream(uri);
+            }
+
+            // Compress and save the bitmap
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, out);
+
+            // Inform the user that the image was saved successfully
+            Toast.makeText(getContext(), "Image Saved Successfully", Toast.LENGTH_SHORT).show();
+        } catch (Exception e) {
+            e.printStackTrace();
+            // Inform the user about the failure
+            Toast.makeText(getContext(), "Error saving image", Toast.LENGTH_SHORT).show();
+        } finally {
+            try {
+                if (out != null) {
+                    out.close();
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
 }

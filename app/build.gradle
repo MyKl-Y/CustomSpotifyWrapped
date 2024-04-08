@@ -43,6 +43,9 @@ dependencies {
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     implementation "androidx.viewpager2:viewpager2:1.0.0"
 
+    //OpenAI
+    implementation 'com.theokanning.openai-gpt3-java:service:0.18.2'
+
     // Notifications
     implementation "androidx.core:core-ktx:1.12.0"
 

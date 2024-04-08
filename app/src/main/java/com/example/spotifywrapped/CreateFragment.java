@@ -25,6 +25,11 @@ import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.SetOptions;
+import com.theokanning.openai.completion.CompletionRequest;
+import com.theokanning.openai.completion.chat.ChatCompletionRequest;
+import com.theokanning.openai.completion.chat.ChatMessage;
+import com.theokanning.openai.image.CreateImageRequest;
+import com.theokanning.openai.service.OpenAiService;
 
 import org.checkerframework.checker.units.qual.A;
 import org.jetbrains.annotations.NotNull;
@@ -72,7 +77,6 @@ public class CreateFragment extends Fragment {
 
     Map<String, ArrayList<String>> recommendations = new HashMap<>();
     private ExecutorService executorService = Executors.newFixedThreadPool(2); // Adjust thread count as needed
-
 
     @Nullable
     @Override
@@ -401,6 +405,15 @@ public class CreateFragment extends Fragment {
                                     artistNames.addAll(artistsHashSet);
 
                                     executorService.execute(() -> {
+
+                                        String prompt = "Describe how someone with the following tastes would act, dress, and think in list format:" +
+                                                " Favorite Artists: " + artistNames.toString() +
+                                                " Favorite Songs: " + songs.toString() +
+                                                " Favorite Genres: " + finalGenres.toString();
+                                        String llmImage = "";
+                                                //generateDescriptionImage(prompt);
+                                        String llmText = generateDescription(prompt);
+
                                         // Perform network calls here instead of the main thread
 
                                         CountDownLatch latch = new CountDownLatch(1);
@@ -411,8 +424,20 @@ public class CreateFragment extends Fragment {
                                         try {
                                             latch.await(); // This waits in the background, not blocking the UI thread
                                             getActivity().runOnUiThread(() -> {
-                                                // Update your UI here after background work is complete
-                                                checkAndUpdateFirestore(updates, artistNames, songs, finalGenres, artistImages, songImages, artistIds, songIds, timeRange, recommendations);
+                                                checkAndUpdateFirestore(
+                                                        updates,
+                                                        artistNames,
+                                                        songs,
+                                                        finalGenres,
+                                                        artistImages,
+                                                        songImages,
+                                                        artistIds,
+                                                        songIds,
+                                                        timeRange,
+                                                        recommendations,
+                                                        llmText,
+                                                        llmImage
+                                                );
                                             });
                                         } catch (InterruptedException e) {
                                             e.printStackTrace();
@@ -515,6 +540,15 @@ public class CreateFragment extends Fragment {
                                     }
 
                                     executorService.execute(() -> {
+
+                                        String prompt = "Describe how someone with the following tastes would act, dress, and think in list format:" +
+                                                " Favorite Artists: " + artistNames.toString() +
+                                                " Favorite Songs: " + songs.toString() +
+                                                " Favorite Genres: " + finalGenres.toString();
+                                        String llmImage = "";
+                                                //generateDescriptionImage(prompt);
+                                        String llmText = generateDescription(prompt);
+
                                         // Perform network calls here instead of the main thread
 
                                         CountDownLatch latch = new CountDownLatch(1);
@@ -525,8 +559,20 @@ public class CreateFragment extends Fragment {
                                         try {
                                             latch.await(); // This waits in the background, not blocking the UI thread
                                             getActivity().runOnUiThread(() -> {
-                                                // Update your UI here after background work is complete
-                                                checkAndUpdateFirestore(updates, artistNames, songs, finalGenres, artistImages, songImages, artistIds, songIds, timeRange, recommendations);
+                                                checkAndUpdateFirestore(
+                                                        updates,
+                                                        artistNames,
+                                                        songs,
+                                                        finalGenres,
+                                                        artistImages,
+                                                        songImages,
+                                                        artistIds,
+                                                        songIds,
+                                                        timeRange,
+                                                        recommendations,
+                                                        llmText,
+                                                        llmImage
+                                                );
                                             });
                                         } catch (InterruptedException e) {
                                             e.printStackTrace();
@@ -557,6 +603,29 @@ public class CreateFragment extends Fragment {
             call.enqueue(callback);
 
         }
+    }
+
+    private String generateDescription(String prompt) {
+        List<ChatMessage> messages = new ArrayList<>();
+        ChatMessage userMessage = new ChatMessage();
+        userMessage.setContent(prompt);
+        userMessage.setRole("user");
+        messages.add(userMessage);
+        OpenAiService service = new OpenAiService(MainActivity.tokens.getValue("OpenAI API Key"));
+        ChatCompletionRequest completionRequest = ChatCompletionRequest.builder()
+                .messages(messages)
+                .model("gpt-3.5-turbo")
+                .build();
+        return service.createChatCompletion(completionRequest).getChoices().get(0).getMessage().getContent();
+    }
+
+    private String generateDescriptionImage(String prompt) {
+        OpenAiService service = new OpenAiService(MainActivity.tokens.getValue("OpenAI API Key"));
+        CreateImageRequest createImageRequest = CreateImageRequest.builder()
+                .prompt(prompt)
+                .model("dall-e-3")
+                .build();
+        return service.createImage(createImageRequest).getData().get(0).getUrl();
     }
 
     public void getRecommendations(String artist1, String artist2, String song1, String song2, String genre, CountDownLatch latch) {
@@ -727,7 +796,7 @@ public class CreateFragment extends Fragment {
                                             latch.await(); // This waits in the background, not blocking the UI thread
                                             getActivity().runOnUiThread(() -> {
                                                 // Update your UI here after background work is complete
-                                                checkAndUpdateFirestore(updates, artistNames, songs, popularities, artistImages, songImages, artistIds, songIds, type, recommendations);
+                                                checkAndUpdateFirestore(updates, artistNames, songs, popularities, artistImages, songImages, artistIds, songIds, type, recommendations, "", "");
                                             });
                                         } catch (InterruptedException e) {
                                             e.printStackTrace();
@@ -782,7 +851,9 @@ public class CreateFragment extends Fragment {
             ArrayList<String> artistIds,
             ArrayList<String> songIds,
             String timeRange,
-            Map<String, ArrayList<String>> recommendations
+            Map<String, ArrayList<String>> recommendations,
+            String llmText,
+            String llmImage
     ) {
         if (timeRange != null) {
             updates.put("timeRange", timeRange);
@@ -806,6 +877,8 @@ public class CreateFragment extends Fragment {
         } else {
             updates.put("dateTime", dateDocumentId);
         }
+        updates.put("llmText", llmText);
+        updates.put("llmImage", llmImage);
         db.collection("users").document(user.getUid())
                 .collection("data").document(dateDocumentId)
                 .set(updates, SetOptions.merge())
