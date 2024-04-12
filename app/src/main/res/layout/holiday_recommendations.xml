@@ -32,7 +32,8 @@
                     android:layout_height="wrap_content"
                     android:text="TextView"
                     android:textAlignment="center"
-                    android:textAppearance="@style/TextAppearance.AppCompat.Medium" />
+                    android:textAppearance="@style/TextAppearance.AppCompat.Medium"
+                    android:textColor="@color/black" />
 
                 <ImageView
                     android:id="@+id/albumCover_imageView"
@@ -55,14 +56,16 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:text="TextView"
-                            android:textAppearance="@style/TextAppearance.AppCompat.Medium" />
+                            android:textAppearance="@style/TextAppearance.AppCompat.Medium"
+                            android:textColor="@color/black" />
 
                         <TextView
                             android:id="@+id/artist_textView"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:text="TextView"
-                            android:textAppearance="@style/TextAppearance.AppCompat.Small" />
+                            android:textAppearance="@style/TextAppearance.AppCompat.Small"
+                            android:textColor="@color/black" />
                     </LinearLayout>
 
                     <LinearLayout
@@ -76,7 +79,8 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:text="###"
-                            android:textAlignment="center" />
+                            android:textAlignment="center"
+                            android:textColor="@color/black" />
 
                         <View
                             android:id="@+id/divider"
@@ -89,7 +93,8 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:text="100"
-                            android:textAlignment="center" />
+                            android:textAlignment="center"
+                            android:textColor="@color/black" />
                     </LinearLayout>
 
                 </LinearLayout>
