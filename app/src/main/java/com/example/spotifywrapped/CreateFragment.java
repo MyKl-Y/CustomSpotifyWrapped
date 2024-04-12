@@ -855,12 +855,6 @@ public class CreateFragment extends Fragment {
             String llmText,
             String llmImage
     ) {
-        if (timeRange != null) {
-            updates.put("timeRange", timeRange);
-        } else {
-            updates.put("timeRange", "1 Week");
-        }
-
         updates.put("topArtists", artistNames);
         updates.put("topSongs", songs);
         updates.put("topGenres", genres);
@@ -872,9 +866,15 @@ public class CreateFragment extends Fragment {
         //parent.put(new Date().toString(), updates);
         SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmmss", Locale.getDefault());
         String dateDocumentId = sdf.format(new Date());
-        if (timeRange.equals("Holiday")) {
-            updates.put("dateTime", timeRange);
+        if (timeRange != null) {
+            updates.put("timeRange", timeRange);
+            if (timeRange.equals("Holiday")) {
+                updates.put("dateTime", timeRange);
+            } else {
+                updates.put("dateTime", dateDocumentId);
+            }
         } else {
+            updates.put("timeRange", "1 Week");
             updates.put("dateTime", dateDocumentId);
         }
         updates.put("llmText", llmText);

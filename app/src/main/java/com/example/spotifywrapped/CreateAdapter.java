@@ -74,7 +74,7 @@ public class CreateAdapter extends RecyclerView.Adapter<CreateAdapter.ViewHolder
             @Override
             public void onClick(View v){
                 Intent intent = new Intent(v.getContext(), SummaryPlayerActivity.class);
-                intent.putExtra("documentId", dataModel.documentId);
+                intent.putExtra("documentId", spotifyDataList.get(position).documentId);
                 v.getContext().startActivity(intent);
             }
         });
